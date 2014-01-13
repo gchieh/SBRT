@@ -1,4 +1,4 @@
-#version 330 core
+#version 150
 
 uniform sampler1D faceArray;
 uniform sampler1D vertice;
@@ -43,6 +43,7 @@ float EPS = .01;
 const int sphere_num = 1;
 const int plane_num = 1;
 const int triangle_num = 12;
+const int verticesNum = 8;
 Sphere sphere[sphere_num];
 Plane plane[plane_num];
 Triangle triangle[triangle_num];
@@ -150,7 +151,7 @@ bool triangleIntersection(Ray r, int triangleno, inout float t){
 int Intersection(Ray r, inout float t){
 	float Table1[sphere_num];
 	float Table2[plane_num];
-	float Table3[128];
+	float Table3[triangle_num];
 	int i_sphere = -1;
 	int i_plane = -1;
 	int i_triangle = -1;
@@ -418,19 +419,19 @@ void main(void)
 
 	plane[0].pos = vec3(0.0, -20.0, 0.0);
 	plane[0].norm = vec3(0.0, 1.0, 0.0);
-	plane[0].color = vec3(0.1, 0.1, 0.1);
+	plane[0].color = vec3(0.1, 0.8, 0.1);
 	
 	/*float ti[12];
 	for(int i = 0; i < 12; i++)
 		ti[i]= texelFetch(Texture,i, 0).x;*/
-	vec4 face[36];
-	vec4 vertex[8];
+	vec4 face[triangle_num];
+	vec4 vertex[verticesNum];
 
 	
-	for(int i = 0; i < 12; i++)
+	for(int i = 0; i < triangle_num; i++)
 		face[i]= texelFetch(faceArray,i, 0);
 
-	for(int i = 0; i < 8; i++)
+	for(int i = 0; i < verticesNum; i++)
 		vertex[i]= vec4(texelFetch(vertice,i, 0));
 	 
 	for(int i = 0;i < triangle_num; i++)
@@ -443,7 +444,7 @@ void main(void)
 
 
 
-		triangle[i].color = vec3(0.9, 0.0 ,0.0);
+		triangle[i].color = vec3(0.0, 0.0 ,1.0);
 	}
 	
 	int level = 0;

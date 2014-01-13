@@ -1,7 +1,10 @@
 /*
-	Shader Based Ray Tracing v1.1
+	Shader Based Ray Tracing v 2.0
+	GChieh
 	
 */
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -9,7 +12,7 @@
 #include <time.h>
 
 //OpenGL Framework
-#ifdef __APPLE__
+#if ( (defined(__MACH__)) && (defined(__APPLE__)) ) 
 #include <OpenGL/OpenGL.h>
 #include <OpenGL/gl3.h>
 #include <GLUT/glut.h>
@@ -20,78 +23,40 @@
 
 // Source headers
 #include "textfile.h"
+#include "shader.h"
+#include "matrix.h"
  
+
+
 #define M_PI       3.14159265358979323846
 const int triangle_num = 12;
 const int vertices = 8;
 #define DATA_NAME "cube.obj"
+using namespace std;
 GLuint indicesImage;
 GLuint verticesImage;
 GLfloat v_1[vertices], v_2[vertices], v_3[vertices],vertex[3*vertices];
 GLfloat f_1[triangle_num],f_2[triangle_num],f_3[triangle_num], face[3*triangle_num];
- 
+
 // Data for drawing Axis
-float verticesAxis[] = {-20.0f, 0.0f, 0.0f, 1.0f,
-            20.0f, 0.0f, 0.0f, 1.0f,
- 
-            0.0f, -20.0f, 0.0f, 1.0f,
-            0.0f,  20.0f, 0.0f, 1.0f,
- 
-            0.0f, 0.0f, -20.0f, 1.0f,
-            0.0f, 0.0f,  20.0f, 1.0f};
- 
-float colorAxis[] = {   0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f, 0.0f};
- 
+
 
 float vertices1[] = { 
-			-512.0f, 512.0f, 0.0f,1.0f,
-            512.0f, 512.0f, 0.0f,1.0f,
-            -512.0f, -512.0f, 0.0f,1.0f,
-			512.0f, -512.0f, 0.0f,1.0f
-			};
-float colors1[] = { 
-			0.0f, 0.0f, 1.0f, 1.0f,
-            0.0f, 0.0f, 1.0f, 1.0f,
-            0.0f, 0.0f, 1.0f, 1.0f,
-			0.0f, 0.0f, 1.0f, 1.0f
-			};
- 
-// Data for triangle 2
-float vertices2[] = {   1.0f, 0.0f, -5.0f, 1.0f,
-            3.0f, 0.0f, -5.0f, 1.0f,
-            2.0f, 2.0f, -5.0f, 1.0f};
- 
-/*float colors2[] = { 1.0f, 0.0f, 0.0f, 1.0f,
-            1.0f, 0.0f, 0.0f, 1.0f,
-            1.0f,0.0f, 0.0f, 1.0f};
- */
-float colors2[] = { 
-			f_1[0], f_1[1], f_1[2], 1.0f,
-            f_1[3], f_1[4], f_1[5], 1.0f,
-            f_1[6],	f_1[7], f_1[8], 1.0f,
-			f_1[9],	f_1[10], f_1[11], 1.0f
-			};
-float test[12] = { 
-			f_1[0], f_1[1], f_1[2],
-            f_1[3], f_1[4], f_1[5],
-            f_1[6],	f_1[7], f_1[8],
-			f_1[9],	f_1[10], f_1[11]
+			-256.0f, 256.0f, 0.0f,1.0f,
+            256.0f, 256.0f, 0.0f,1.0f,
+            -256.0f, -256.0f, 0.0f,1.0f,
+			256.0f, -256.0f, 0.0f,1.0f
 			};
 
 // Shader Names
-char *vertexFileName = "trace.vert";
-char *fragmentFileName = "trace.frag";
+//char *vertexFileName = "trace.vert";
+//char *fragmentFileName = "trace.frag";
  
 // Program and Shader Identifiers
-GLuint p,v,f;
+//GLuint p,v,f;
  
 // Vertex Attribute Locations
-GLuint vertexLoc, colorLoc;
+GLuint vertexLoc;
  
 // Uniform variable Locations
 GLuint projMatrixLoc, viewMatrixLoc;
@@ -102,6 +67,17 @@ GLuint vao[3];
 // storage for Matrices
 float projMatrix[16];
 float viewMatrix[16];
+
+//Light Resource
+float lpos[4] = {2.0,0.0,2.0,1};
+float light_pos[3]={lpos[0],lpos[1],lpos[2]};
+
+Shader shader;
+
+
+
+
+
 //-----------------------------------------------------
 //Calculate FPS
 bool finish_without_update = false;
@@ -206,6 +182,7 @@ void loadOBJ()
 //-----------------------------------------------------
 // VECTOR STUFF
 // res = a cross b;
+/*
 void crossProduct( float *a, float *b, float *res) {
  
     res[0] = a[1] * b[2]  -  b[1] * a[2];
@@ -263,7 +240,7 @@ void setTranslationMatrix(float *mat, float x, float y, float z) {
     mat[12] = x;
     mat[13] = y;
     mat[14] = z;
-}
+}*/
 // ----------------------------------------------------
 // Projection Matrix
 void buildProjectionMatrix(float fov, float ratio, float nearP, float farP) {
@@ -358,49 +335,13 @@ void setupBuffers() {
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices1), vertices1, GL_STATIC_DRAW);
     glEnableVertexAttribArray(vertexLoc);
     glVertexAttribPointer(vertexLoc, 4, GL_FLOAT, 0, 0, 0);
- 
+ /*
     // bind buffer for colors and copy data into buffer
     glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
     glBufferData(GL_ARRAY_BUFFER, sizeof(colors1), colors1, GL_STATIC_DRAW);
     glEnableVertexAttribArray(colorLoc);
-    //glVertexAttribPointer(colorLoc, 4, GL_FLOAT, 0, 0, 0);
-/*
-    //
-    // VAO for second triangle
-    //
-    glBindVertexArray(vao[1]);
-    // Generate two slots for the vertex and color buffers
-    glGenBuffers(2, buffers);
- 
-    // bind buffer for vertices and copy data into buffer
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(f_1), f_1, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(vertexLoc);
-    glVertexAttribPointer(vertexLoc, 4, GL_FLOAT, 0, 0, 0);
- 
-    // bind buffer for colors and copy data into buffer
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colors2), colors2, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(colorLoc);
-    glVertexAttribPointer(colorLoc, 4, GL_FLOAT, 0, 0, 0);
- 
-    //
-    // This VAO is for the Axis
-    //
-    glBindVertexArray(vao[2]);
-    // Generate two slots for the vertex and color buffers
-    glGenBuffers(2, buffers);
-    // bind buffer for vertices and copy data into buffer
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verticesAxis), verticesAxis, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(vertexLoc);
-    glVertexAttribPointer(vertexLoc, 4, GL_FLOAT, 0, 0, 0);
- 
-    // bind buffer for colors and copy data into buffer
-    glBindBuffer(GL_ARRAY_BUFFER, buffers[1]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colorAxis), colorAxis, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(colorLoc);
-    glVertexAttribPointer(colorLoc, 4, GL_FLOAT, 0, 0, 0);*/
+    //glVertexAttribPointer(colorLoc, 4, GL_FLOAT, 0, 0, 0);*/
+
 }
  
 void setUniforms() {
@@ -409,28 +350,59 @@ void setUniforms() {
     glUniformMatrix4fv(viewMatrixLoc,  1, false, viewMatrix);
 }
  int count = 1;
+
+ /*
+GLuint  LoadTexture(GLuint texture)
+{
+  unsigned char * data;
+  data = (unsigned char *)malloc( triangle_num* 3 );
+
+
+	loadOBJ();
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_1D, texture);
+
+	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB16F,  sizeof(data), 0, GL_RGB, GL_FLOAT, &data);
+
+	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
+	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+free( data ); //free the texture
+
+return texture; //return whether it was successfull
+}
+*/
+void FreeTexture( GLuint texture )
+{
+glDeleteTextures( 1, &texture );
+}
+
+
+
+
 void renderScene(void) {
 	
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	setCamera(0,0,60,0,0,0);
-    glUseProgram(p);
+    //glUseProgram(p);
+	shader.bind();
 
-	GLint loc[12];
+	//GLint loc[12];
 
     
 	setUniforms();
  
-	
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_1D);
-	int face_location = glGetUniformLocation(p,"faceArray");
+	int face_location = glGetUniformLocation(shader.id(),"faceArray");
 	glUniform1i(face_location,0);
 	glBindTexture(GL_TEXTURE_1D, indicesImage);
 
 	glActiveTexture(GL_TEXTURE1);
 	glEnable(GL_TEXTURE_1D);
-	int vertice_location = glGetUniformLocation(p,"vertice");
+	int vertice_location = glGetUniformLocation(shader.id(),"vertice");
 	glUniform1i(vertice_location,1);
 	glBindTexture(GL_TEXTURE_1D, verticesImage);
 
@@ -438,21 +410,30 @@ void renderScene(void) {
 	
 	glBindVertexArray(vao[0]);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	/*
-		glBindVertexArray(vao[1]);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-		glBindVertexArray(vao[2]);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);*/
-
+	
     /*glEndQuery(GL_TIME_ELAPSED);
 	// get the query result
 	glGetQueryObjectui64v(query, GL_QUERY_RESULT, &elapsed_time);
 	printf("Time Elapsed: %f ms\n", elapsed_time / 1000000.0);*/
 
+	
+	
+	
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_1D, 0);
+	glDisable(GL_TEXTURE_1D);
+
+	shader.unbind();
+	
+	
+	
+	
+	
+	
+	/*
 	if( finish_without_update )
 		glFinish();
-	else
+	else*/
 		glutSwapBuffers();
 
 }
@@ -461,9 +442,9 @@ void processNormalKeys(unsigned char key, int x, int y) {
  
     if (key == 27) {
         glDeleteVertexArrays(3,vao);
-        glDeleteProgram(p);
-        glDeleteShader(v);
-        glDeleteShader(f);
+		glDeleteProgram(shader.id());
+        //glDeleteShader(v);
+        //glDeleteShader(f);
         exit(0);
     }
 	else if(key == 'F' || key == 'f')
@@ -475,107 +456,34 @@ void processNormalKeys(unsigned char key, int x, int y) {
 		finish_without_update = false;
 	}
 }
+
+void setShaders() {
+	#if ( (defined(__MACH__)) && (defined(__APPLE__)) )
+	#else
+	glewInit();
+	#endif
+	if (glewIsSupported("GL_VERSION_3_3"))
+		printf("Ready for OpenGL 3.3\n");
+	else {
+		printf("OpenGL 3.3 not supported\n");
+		exit(1);
+	}
+
+	shader.init("trace.vert", "trace.frag");
+
+	glBindFragDataLocation(shader.id(), 0, "outputF");
+    glLinkProgram(shader.id());
+    //printProgramInfoLog(shader.id());
  
-#define printOpenGLError() printOglError(__FILE__, __LINE__)
- 
-int printOglError(char *file, int line)
-{
-    //
-    // Returns 1 if an OpenGL error occurred, 0 otherwise.
-    //
-    GLenum glErr;
-    int    retCode = 0;
- 
-    glErr = glGetError();
-    while (glErr != GL_NO_ERROR)
-    {
-        printf("glError in file %s @ line %d: %s\n", file, line, gluErrorString(glErr));
-        retCode = 1;
-        glErr = glGetError();
-    }
-    return retCode;
+    vertexLoc = glGetAttribLocation(shader.id(),"position");
+    projMatrixLoc = glGetUniformLocation(shader.id(), "projMatrix");
+    viewMatrixLoc = glGetUniformLocation(shader.id(), "viewMatrix");
+
 }
- 
-void printShaderInfoLog(GLuint obj)
-{
-    int infologLength = 0;
-    int charsWritten  = 0;
-    char *infoLog;
- 
-    glGetShaderiv(obj, GL_INFO_LOG_LENGTH,&infologLength);
- 
-    if (infologLength > 0)
-    {
-        infoLog = (char *)malloc(infologLength);
-        glGetShaderInfoLog(obj, infologLength, &charsWritten, infoLog);
-        printf("%s\n",infoLog);
-        free(infoLog);
-    }
-}
- 
-void printProgramInfoLog(GLuint obj)
-{
-    int infologLength = 0;
-    int charsWritten  = 0;
-    char *infoLog;
- 
-    glGetProgramiv(obj, GL_INFO_LOG_LENGTH,&infologLength);
- 
-    if (infologLength > 0)
-    {
-        infoLog = (char *)malloc(infologLength);
-        glGetProgramInfoLog(obj, infologLength, &charsWritten, infoLog);
-        printf("%s\n",infoLog);
-        free(infoLog);
-    }
-}
- 
-GLuint setupShaders() {
- 
-    char *vs = NULL,*fs = NULL,*fs2 = NULL;
- 
-    GLuint p,v,f;
- 
-    v = glCreateShader(GL_VERTEX_SHADER);
-    f = glCreateShader(GL_FRAGMENT_SHADER);
- 
-    vs = textFileRead(vertexFileName);
-    fs = textFileRead(fragmentFileName);
- 
-    const char * vv = vs;
-    const char * ff = fs;
- 
-    glShaderSource(v, 1, &vv,NULL);
-    glShaderSource(f, 1, &ff,NULL);
- 
-    free(vs);free(fs);
- 
-    glCompileShader(v);
-    glCompileShader(f);
- 
-    printShaderInfoLog(v);
-    printShaderInfoLog(f);
- 
-    p = glCreateProgram();
-    glAttachShader(p,v);
-    glAttachShader(p,f);
- 
-    
-	
-	
-	
-	glBindFragDataLocation(p, 0, "outputF");
-    glLinkProgram(p);
-    printProgramInfoLog(p);
- 
-    vertexLoc = glGetAttribLocation(p,"position");
-    colorLoc = glGetAttribLocation(p, "face_vert_x");
- 
-    projMatrixLoc = glGetUniformLocation(p, "projMatrix");
-    viewMatrixLoc = glGetUniformLocation(p, "viewMatrix");
- 
-    return(p);
-}
+
+
+
+
  
 int main(int argc, char **argv) {	
 	//clock_t start_time, end_time;
@@ -586,75 +494,52 @@ int main(int argc, char **argv) {
 	loadOBJ();
     glutInitWindowPosition(100,100);
     glutInitWindowSize(512,512);
-    glutCreateWindow("SBRT v1.0");
+    glutCreateWindow("SBRT v2.0");
 
     glutDisplayFunc(renderScene);
-
     glutIdleFunc(renderScene);
     glutReshapeFunc(changeSize);
     glutKeyboardFunc(processNormalKeys);
  
-    glewInit();
-    if (glewIsSupported("GL_VERSION_3_3"))
-        printf("Ready for OpenGL 3.3\n");
-    else {
-        printf("OpenGL 3.3 not supported\n");
-        exit(1);
-    }
+    
+	glewInit();
+    
  
     glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS);
     glClearColor(1.0,1.0,1.0,1.0);
  
-    p = setupShaders();
+    
     setupBuffers();
 
-	/*
-	GLuint u_face = glGetUniformLocation(p, "faceArray");
-	glUniform1i(u_face, 0);
-	GLuint u_vertice = glGetUniformLocation(p, "vertice");
-	glUniform1i(u_vertice, 1);
-	*/
 
-
-	int anint=0;
-
-
-	//glEnable(GL_TEXTURE_1D); 
-	//glActiveTexture(GL_TEXTURE0);
-	//glGetIntegerv(GL_ACTIVE_TEXTURE, &anint);
-	//printf("%d\n",anint);
-
+	setShaders();
+	
+//Load Texture
 	glGenTextures(1, &indicesImage);
 	glBindTexture(GL_TEXTURE_1D, indicesImage);
-	//glBindSampler(GL_TEXTURE0, indicesImage);
+
 	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB16F,  sizeof(face), 0, GL_RGB, GL_FLOAT, &face);
-	//glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB32F, sizeof(face), 0, GL_RGB, GL_FLOAT, &face);
 
 	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
 
-	//glEnable(GL_TEXTURE_1D);
-	//glActiveTexture(GL_TEXTURE1);
-	//glGetIntegerv(GL_ACTIVE_TEXTURE, &anint);
-	//printf("%d\n",anint);
 	glGenTextures(1, &verticesImage);
 	glBindTexture(GL_TEXTURE_1D, verticesImage);
-	//glBindSampler(GL_TEXTURE1, verticesImage);
+
 	glTexImage1D(GL_TEXTURE_1D, 0, GL_RGB16F, sizeof(vertex), 0, GL_RGB, GL_FLOAT, &vertex);
-	//printf("%f",v_1[0]);
+
 	
 	glTexParameterf(GL_TEXTURE_1D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);  
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  
 	glTexParameteri(GL_TEXTURE_1D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
-
+	
   	//end_time = clock();
 	//total_time = (float)(end_time - start_time)/CLOCKS_PER_SEC;
 	//printf("°õ¦æ®É¶¡ : %f sec \n", total_time);
-    
-	
-	glActiveTexture(GL_TEXTURE0);
+
 	
 	glutMainLoop();
 
